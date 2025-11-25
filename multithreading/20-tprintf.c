@@ -1,58 +1,37 @@
 #include "multithreading.h"
-
-void mutex_init(void) __attribute__((constructor));
-void mutex_destroy(void) __attribute__((destructor));
-static pthread_mutex_t lock_01;
+#include <string.h>
+#include <stdarg.h>
 
 /**
- * mutex_init - initializes a mutex lock
- */
-void mutex_init(void)
-{
-	if (pthread_mutex_init(&lock_01, NULL) != 0)
-	{
-		printf("Mutex init failed\n");
-		exit(EXIT_FAILURE);
-	}
-}
-
-/**
- * mutex_destroy - destroys a mutex lock
- */
-void mutex_destroy(void)
-{
-	if (pthread_mutex_destroy(&lock_01) != 0)
-	{
-		printf("Mutex destroy failed\n");
-		exit(EXIT_FAILURE);
-	}
-}
-
-/**
- * tprintf - uses printf family to print out given formatted string
- * @format: string to print
- * Return: EXIT_SUCCESS
- */
+ * tprintf - uses printf family to print out a given formatted string
+ * uses mutex to prevent race conditions
+ * @format: formatted string
+ * Return: number of characters printed
+ * Frank Onyema Orji
+ **/
 int tprintf(char const *format, ...)
 {
-	va_list arguments;
+	pthread_t self = pthread_self();
+	va_list args;
+	int chars_printed;
 
-	va_start(arguments, format);
-
-	/* lock mutex */
-	if (pthread_mutex_lock(&lock_01) != 0)
-	{
-		printf("Mutex Lock Failed\n");
-		exit(EXIT_FAILURE);
-	}
-
-	/* print calling thread ID, and string */
-	printf("[%lu] ", pthread_self());
-	vprintf(format, arguments);
-
-	/* unlock mutex */
-	pthread_mutex_unlock(&lock_01);
-
-	va_end(arguments);
-	return (EXIT_SUCCESS);
+	va_start(args, format);
+	pthread_mutex_lock(&tprintf_mutex);
+	chars_printed = printf("[%lu] ", (unsigned long)self);
+	chars_printed += vprintf(format, args);
+	pthread_mutex_unlock(&tprintf_mutex);
+	va_end(args);
+	return (chars_printed);
 }
+
+__attribute__((constructor)) void tprintf_mutex_init(void)
+{
+	pthread_mutex_init(&tprintf_mutex, NULL);
+}
+
+__attribute__((destructor)) void tprintf_mutex_destroy(void)
+{
+	pthread_mutex_destroy(&tprintf_mutex);
+}
+
+void end(void) __attribute__((destructor));

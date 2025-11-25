@@ -1,1 +1,1 @@
-Strace
+This is a readme file for strace projects.

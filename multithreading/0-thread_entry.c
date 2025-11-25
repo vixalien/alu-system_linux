@@ -1,10 +1,11 @@
 #include "multithreading.h"
 
 /**
- * thread_entry - serves as entry point to new thread
- * @arg: holds address of string that must be printed and followed by new line
- * Return: void
- */
+* thread_entry - Thread entry point
+* @arg: Unused
+*author: Frank Onyema Orji
+* Return: NULL
+*/
 void *thread_entry(void *arg)
 {
 	printf("%s\n", (char *)arg);

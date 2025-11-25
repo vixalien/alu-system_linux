@@ -5,6 +5,7 @@
  * @sc: pointer to syscall struct
  * @regs: registers (struct user_regs_struct)
  * @pid: pid (unused)
+ * author: Frank Onyema Orji
  **/
 void print_args(const syscall_t *sc, struct user_regs_struct *regs, pid_t pid)
 {

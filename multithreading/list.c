@@ -6,7 +6,7 @@
  * node_create - Creates a Node structure and initializes it
  *
  * @content: Address of the custom content to store in the node
- *
+ * Author: Frank Onyema Orji
  * Return: A pointer to the created node
  */
 node_t *node_create(void *content)

@@ -1,127 +1,93 @@
 #include "multithreading.h"
+#include "22-prime_factors_helpers.c"
+#include <stdlib.h>
 
-static pthread_mutex_t task_status_mutex;
+/*
+ * Feel free to also copy this.
+ * No one cares about you so care about yourself
+ * Author: Frank Onyema Orji
+*/
 
-/**
- * initTaskStatusMutex - program that initializes the mutex
- * used to manage access to the status of tasks
- * Return: nothing (void)
- */
-
-void initTaskStatusMutex(void)
+__attribute__((constructor)) void tasks_mutex_init(void)
 {
-	pthread_mutex_init(&task_status_mutex, NULL);
+	pthread_mutex_init(&tasks_mutex, NULL);
 }
 
-/**
- * destroyTaskStatusMutex - program that destroys the mutex
- * that was used to manage task statuses
- * Return: nothing (void)
- */
-
-void destroyTaskStatusMutex(void)
+__attribute__((destructor)) void tasks_mutex_destroy(void)
 {
-	pthread_mutex_destroy(&task_status_mutex);
+	pthread_mutex_destroy(&tasks_mutex);
 }
 
-/**
- * create_task - program that creates a new task with a specific
- * entry function and parameter
- * @entry: a function pointer to the task function to be executed
- * @param: a pointer to the parameter to be passed to the task function
- * Return: a pointer to the newly created task structure,
- *         or NULL if the creation fails
- */
 
+/**
+ * create_task - creates a new task structure and returns a pointer to it
+ * @entry: pointer to the entry function of the task
+ * @param: parameter to be passed to entry function
+ * Return: pointer to the created task structure
+ **/
 task_t *create_task(task_entry_t entry, void *param)
 {
-	task_t *task = NULL;
+	task_t *task = malloc(sizeof(task_t));
+	static unsigned int id;
 
-	if (!entry)
-		return (NULL);
-
-	task = malloc(sizeof(task_t));
-
-	if (!task)
-		return (NULL);
-
-	task->entry = entry;
-	task->param = param;
-	task->status = PENDING;  /* Initial status is set to PENDING */
-	task->result = NULL;
-	task->lock = task_status_mutex;
+	if (task)
+	{	task->entry = entry;
+		task->param = param;
+		task->lock = tasks_mutex;
+		task->status = PENDING;
+		task->result = NULL;
+		task->id = id++;
+	}
 
 	return (task);
 }
 
 /**
- * destroy_task - program that destroys a task structure and frees
- * its associated resources
- * @task: a pointer to the task structure to be destroyed
- * Return: nothing (void)
- */
-
+ * destroy_task - destroys a task
+ * @task: task to destroy
+ **/
 void destroy_task(task_t *task)
 {
-	if (!task)
-		return;
-
-	if (task->result)
+	if (task)
 	{
 		list_destroy(task->result, free);
 		free(task->result);
+		free(task);
 	}
-
-	free(task);
 }
 
 /**
- * exec_tasks - program that executes all tasks in a given list,
- * managing each task's state
- * @tasks: a pointer to a list of tasks to be executed
- * Return: NULL always (used for compatibility with threading functions)
- */
-
+ * exec_tasks - executes a list of tasks
+ * @tasks: NULL-terminated list of tasks
+ * Return: ???
+ **/
 void *exec_tasks(list_t const *tasks)
 {
-	node_t *curr_node = NULL;
-	task_t *task = NULL;
-	size_t i;
+	int tasks_pending = 1, task_id;
+	node_t *node;
 
-	if (!tasks || !tasks->head)
-		return (NULL);
+	if (tasks == NULL)
+		pthread_exit(NULL);
 
-	for (i = 0, curr_node = tasks->head; i < tasks->size;
-	     i++, curr_node = curr_node->next)
-	{
-		task = (task_t *)curr_node->content;
-
-		if (!task)
-			continue;
-
-		pthread_mutex_lock(&task_status_mutex);
-		if (task->status == PENDING)
-		{
-			task->status = STARTED;
-			pthread_mutex_unlock(&task_status_mutex);
-
-			tprintf("[%02lu] Started\n", i);
-			task->result = task->entry(task->param);
-
-			if (!task->result)
+	while (tasks_pending)
+		for (tasks_pending = 0, node = tasks->head; node; node = node->next)
+			if (get_task_status(node->content) == PENDING)
 			{
-				task->status = FAILURE;
-				tprintf("[%02lu] Failure\n", i);
+				tasks_pending = 1;
+				task_id = ((task_t *)node->content)->id;
+				set_task_status(node->content, STARTED);
+				tprintf("[%02d] Started\n", task_id);
+				if (exec_task(node->content))
+				{
+					set_task_status(node->content, SUCCESS);
+					tprintf("[%02d] Success\n", task_id);
+				}
+				else
+				{
+					set_task_status(node->content, FAILURE);
+					tprintf("[%02d] Failure\n", task_id);
+				}
 			}
-			else
-			{
-				task->status = SUCCESS;
-				tprintf("[%02lu] Success\n", i);
-			}
-		}
-		else
-			pthread_mutex_unlock(&task_status_mutex);
-	}
 
 	return (NULL);
 }

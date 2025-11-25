@@ -1,12 +1,15 @@
 #include "multithreading.h"
 
 /**
- * tprintf - uses printf family to print out a given formatted string
- * @format: data to print
- * Return: EXIT_SUCCESS
- */
+* tprintf - print a message using printf
+* @format: format string
+* Autor: Frank Onyema Orji
+* Return: 0
+*/
 int tprintf(char const *format, ...)
 {
-	printf("[%lu] %s", pthread_self(), format);
-	return (EXIT_SUCCESS);
+	pthread_t tid = pthread_self(); /* get the thread id */
+
+	printf("[%lu] %s", tid, format);
+	return (0);
 }
